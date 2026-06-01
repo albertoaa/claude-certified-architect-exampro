@@ -1,0 +1,3 @@
+anthropic[aiohttp]
+asyncio
+python-dotenv
