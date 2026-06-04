@@ -10,6 +10,7 @@ Study repo for the [Claude Certified Architect](https://www.anthropic.com) certi
 | 2 | [`stop_reason/`](#stop_reason) | Anthropic Messages API — `stop_reason`-driven tool loop | ✅ Done |
 | 3 | [`decision_making/`](#decision_making) | Code-driven vs model-driven routing | ✅ Done |
 | 4 | [`end_loop_correctly/`](#end_loop_correctly) | Safe loop termination (max iterations + exit conditions) | ✅ Done |
+| 5 | [`coordinator_agent_basic/`](#coordinator_agent_basic) | Hub-and-spoke coordinator + job application screener | ✅ Done |
 
 ---
 
@@ -61,6 +62,22 @@ Extends the model-driven loop with proper exit conditions: a `for iteration in r
 ```bash
 python end_loop_correctly/main.py
 ```
+
+---
+
+### `coordinator_agent_basic/`
+
+**Coordinator–subagent** orchestration with the Messages API (`main.py`) and a full **job application screener** example:
+
+- **`job_application_screener/`** — Claude Code subagents (`.claude/agents/`), coordinator `CLAUDE.md`, fixtures, and `main.py` that loads the same spoke definitions for API runs.
+
+```bash
+cd coordinator_agent_basic/job_application_screener
+pip install -r requirements.txt
+python main.py
+```
+
+For Claude Code, start a session in `job_application_screener/` and use `/agents` to verify the four spokes. See `job_application_screener/README.md`.
 
 ---
 
