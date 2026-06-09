@@ -11,6 +11,7 @@ Study repo for the [Claude Certified Architect](https://www.anthropic.com) certi
 | 3 | [`decision_making/`](#decision_making) | Code-driven vs model-driven routing | ✅ Done |
 | 4 | [`end_loop_correctly/`](#end_loop_correctly) | Safe loop termination (max iterations + exit conditions) | ✅ Done |
 | 5 | [`coordinator_agent_basic/`](#coordinator_agent_basic) | Hub-and-spoke coordinator + job application screener | ✅ Done |
+| 6 | [`dynamic_selection/`](#dynamic_selection) | Pipeline selection — classify request, expose only needed specialists | ✅ Done |
 
 ---
 
@@ -78,6 +79,18 @@ python main.py
 ```
 
 For Claude Code, start a session in `job_application_screener/` and use `/agents` to verify the four spokes. See `job_application_screener/README.md`.
+
+---
+
+### `dynamic_selection/`
+
+Extends the coordinator pattern with **pipeline selection**: before the coordinator runs, a cheap classifier call maps the user's request to one of four pipelines (`DIRECT`, `RESEARCH_ONLY`, `WRITING_ONLY`, `RESEARCH_AND_WRITE`). The coordinator is then offered only the tools that pipeline needs — irrelevant specialists are never reachable.
+
+Combines the code-driven routing pattern from `decision_making/` with the hub-and-spoke coordinator from `coordinator_agent_basic/`.
+
+```bash
+python dynamic_selection/main.py
+```
 
 ---
 
