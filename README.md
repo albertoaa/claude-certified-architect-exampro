@@ -12,6 +12,7 @@ Study repo for the [Claude Certified Architect](https://www.anthropic.com) certi
 | 4 | [`end_loop_correctly/`](#end_loop_correctly) | Safe loop termination (max iterations + exit conditions) | ✅ Done |
 | 5 | [`coordinator_agent_basic/`](#coordinator_agent_basic) | Hub-and-spoke coordinator + job application screener | ✅ Done |
 | 6 | [`dynamic_selection/`](#dynamic_selection) | Pipeline selection — classify request, expose only needed specialists | ✅ Done |
+| 7 | [`research_partitioning/`](#research_partitioning) | Partition generation — non-overlapping task scopes with explicit covers/excludes | ✅ Done |
 
 ---
 
@@ -90,6 +91,20 @@ Combines the code-driven routing pattern from `decision_making/` with the hub-an
 
 ```bash
 python dynamic_selection/main.py
+```
+
+### `research_partitioning/`
+
+Extends the dynamic-selection coordinator with a **partition generation** step that eliminates token waste from overlapping research agents. Before the coordinator runs, a dedicated call decomposes the request into non-overlapping partitions — each with an explicit `covers` list (its bounded scope) and an `excludes` list (the other partitions' topics). The coordinator receives the partition JSON in its system prompt and is instructed to call `research_specialist` exactly once per partition, staying within its scope.
+
+Key additions over `dynamic_selection/`:
+
+- `generate_partitions()` — cheap pre-flight call that produces the `{ partitions: [...] }` JSON structure and strips markdown fences before parsing
+- Partition JSON is printed at startup so the human can verify scope boundaries before any specialist runs
+- `run_coordinator()` builds a dynamic system prompt: base instructions plus the partition map when research is involved
+
+```bash
+python research_partitioning/main.py
 ```
 
 ---
