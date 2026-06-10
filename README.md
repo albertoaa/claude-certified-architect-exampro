@@ -5,7 +5,7 @@ Study repo for the [Claude Certified Architect](https://www.anthropic.com) certi
 ## Progress
 
 | # | Module | Concept | Status |
-|---|--------|---------|--------|
+| --- | -------- | --------- | -------- |
 | 1 | [`hello_world/`](#hello_world) | Claude Agent SDK — autonomous bug-fixing agent | ✅ Done |
 | 2 | [`stop_reason/`](#stop_reason) | Anthropic Messages API — `stop_reason`-driven tool loop | ✅ Done |
 | 3 | [`decision_making/`](#decision_making) | Code-driven vs model-driven routing | ✅ Done |
@@ -13,6 +13,7 @@ Study repo for the [Claude Certified Architect](https://www.anthropic.com) certi
 | 5 | [`coordinator_agent_basic/`](#coordinator_agent_basic) | Hub-and-spoke coordinator + job application screener | ✅ Done |
 | 6 | [`dynamic_selection/`](#dynamic_selection) | Pipeline selection — classify request, expose only needed specialists | ✅ Done |
 | 7 | [`research_partitioning/`](#research_partitioning) | Partition generation — non-overlapping task scopes with explicit covers/excludes | ✅ Done |
+| 8 | [`refinement_loop/`](#refinement_loop) | Self-evaluating refinement loop — coordinator scores its own synthesis and re-delegates until coverage is sufficient | ✅ Done |
 
 ---
 
@@ -107,6 +108,64 @@ Key additions over `dynamic_selection/`:
 python research_partitioning/main.py
 ```
 
+### `refinement_loop/`
+
+Extends the research-partitioning coordinator with a **self-evaluating refinement loop** for `RESEARCH_AND_WRITE` requests. Instead of delegating once and stopping, the coordinator iterates — scoring its own synthesis and re-delegating targeted gap-filling queries — until coverage is sufficient or the iteration budget is exhausted.
+
+The key forcing function is the `evaluate_coverage` tool: the coordinator must commit to a numeric score (0–10) and an explicit gap list in structured output before the loop can advance. The tool result (`SUFFICIENT` / `NEEDS_REFINEMENT`) then drives loop control, and the score + gaps are recorded in conversation history so later iterations know exactly what was already tried.
+
+Four tools replace the previous specialist pair:
+
+| Tool | Role |
+| ------ | ------ |
+| `delegate_research` | Send a targeted query to the research specialist |
+| `delegate_synthesis` | Send all collected findings to the writer for a draft |
+| `evaluate_coverage` | Score the draft and list gaps — controls whether the loop continues |
+| `submit_final` | Terminate the loop and deliver the final answer |
+
+Key additions over `research_partitioning/`:
+
+- `REFINEMENT_COORDINATOR_PROMPT` — instructs the coordinator to evaluate after each synthesis and only call `submit_final` when confident
+- `run_refinement_coordinator()` — agentic loop that handles all four tools; `evaluate_coverage` returns either `SUFFICIENT` or `NEEDS_REFINEMENT` with remaining iteration count
+- `MAX_REFINEMENT_ITERATIONS = 4` / `COVERAGE_THRESHOLD = 8` — configurable loop guards
+- `_bar()` — renders a `█`/`░` block-character score bar so coverage progress is visible at a glance
+- Terminal output uses `[RESEARCH]` / `[SYNTHESIS]` / `[EVALUATE]` step labels; the evaluate line shows iteration number, score, bar, and decision on one line; gaps are printed as a bullet list; the final answer header includes the full score trail (e.g. `scores: 6/10 → 9/10`)
+- `main()` routes `RESEARCH_AND_WRITE` to the refinement coordinator; other pipelines fall through to `run_coordinator()` as before
+
+Example terminal output for a two-iteration run:
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  REFINEMENT LOOP  (max 4 iterations · threshold 8/10)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [RESEARCH]   What are the cardiovascular benefits of morning exercise?
+               Reduces resting heart rate, lowers blood pressure...
+
+  [SYNTHESIS]  Rise early and move — morning exercise is one of the...
+
+  [EVALUATE]   iteration 1/4  ·  score  6/10  [████████████░░░░░░░░]  NEEDS REFINEMENT  (3 left)
+               gaps:
+                 • No specific statistics cited
+                 • Long-term vs short-term effects not distinguished
+
+  [RESEARCH]   Specific statistics on cardiovascular and metabolic benefits...
+               A 2023 meta-analysis found 150 min/week reduces cardiac...
+
+  [SYNTHESIS]  Science backs every sunrise sprint: regular morning...
+
+  [EVALUATE]   iteration 2/4  ·  score  9/10  [██████████████████░░]  SUFFICIENT ✓
+               no gaps identified
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FINAL ANSWER  (scores: 6/10 → 9/10)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```bash
+python refinement_loop/main.py
+```
+
 ---
 
 ## Shared Library — `lib/`
@@ -132,7 +191,7 @@ pytest lib/tests/
 
 Most exercises rely on the Anthropic API. Create a `.env` file in the workspace root (already git-ignored):
 
-```
+```env
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
