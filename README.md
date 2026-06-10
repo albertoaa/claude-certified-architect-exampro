@@ -14,6 +14,7 @@ Study repo for the [Claude Certified Architect](https://www.anthropic.com) certi
 | 6 | [`dynamic_selection/`](#dynamic_selection) | Pipeline selection — classify request, expose only needed specialists | ✅ Done |
 | 7 | [`research_partitioning/`](#research_partitioning) | Partition generation — non-overlapping task scopes with explicit covers/excludes | ✅ Done |
 | 8 | [`refinement_loop/`](#refinement_loop) | Self-evaluating refinement loop — coordinator scores its own synthesis and re-delegates until coverage is sufficient | ✅ Done |
+| 9 | [`coordinator_observability/`](#coordinator_observability) | Observability layer — structured logging, error resilience, parallel dispatch, token tracking, and run correlation IDs | ✅ Done |
 
 ---
 
@@ -164,6 +165,26 @@ Example terminal output for a two-iteration run:
 
 ```bash
 python refinement_loop/main.py
+```
+
+---
+
+### `coordinator_observability/`
+
+Extends the refinement-loop coordinator with a production-quality **observability layer** and several resilience fixes. All output now flows through `_log()` — a thin wrapper that writes to stdout and persists to `logs/<timestamp>.log` via the shared `lib/agent_output_parser/_logger` — so every run can be replayed from disk.
+
+Key additions over `refinement_loop/`:
+
+- `_log()` — replaces all bare `print()` calls; writes to stdout **and** `coordinator_observability/logs/<timestamp>.log`
+- Structured per-turn logging — replaces the noisy raw JSON dump (`response.to_dict()`) with a one-liner: `stop=end_turn  tokens=412↑/87↓`
+- `run_id` — `uuid4` hex prefix added to the refinement loop header so multiple runs in the same log file can be correlated
+- `total_tokens` — cumulative input + output token count accumulated across all turns; shown in the final answer block
+- `asyncio.gather()` — all specialist calls within a single coordinator turn are dispatched concurrently instead of sequentially; applies to both `run_coordinator` and `run_refinement_coordinator`
+- Error resilience in `run_specialist` — `try/except APIError` returns a structured error string instead of crashing; unknown tool names are caught before the dict lookup
+- Clean final output — when `stop_reason != "tool_use"`, text blocks are extracted and logged rather than dumping the full response object
+
+```bash
+python coordinator_observability/main.py
 ```
 
 ---
